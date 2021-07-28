@@ -52,8 +52,7 @@ contract Royalty is AccessControl {
     /// @dev Return royalty value of msg.sender for the token and sale price
     /// @param tokenId the NFT id of the royalties
     /// @param salePrice sale price of the NFT
-    function royaltyInfo(uint256 tokenId, uint256 salePrice) external view returns (uint256)
-    {
+    function royaltyInfo(uint256 tokenId, uint256 salePrice) external view returns (uint256) {
         return salePrice * _royalties[tokenId][msg.sender] / 10000;
     }
 
@@ -68,8 +67,14 @@ contract Royalty is AccessControl {
         require(to != address(0), 'Royalty: Invalid withdraw address');
 
         uint256 royaltyAmount = salePrice * _royalties[tokenId][msg.sender] / 10000;
-        require(IERC20(saleToken).balanceOf(msg.sender) >= royaltyAmount, 'Royalty: Insufficient sale token balance to withdraw');
-        require(IERC20(saleToken).allowance(msg.sender, address(this)) >= royaltyAmount, 'Royalty: Please approve to transfer ERC20');
+        require(
+            IERC20(saleToken).balanceOf(msg.sender) >= royaltyAmount,
+            'Royalty: Insufficient sale token balance to withdraw'
+        );
+        require(
+            IERC20(saleToken).allowance(msg.sender, address(this)) >= royaltyAmount,
+            'Royalty: Please approve to transfer ERC20'
+        );
 
         IERC20(saleToken).transferFrom(msg.sender, to, royaltyAmount);
     }

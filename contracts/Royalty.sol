@@ -40,6 +40,7 @@ contract Royalty is AccessControl {
     /// @param recipient recipient of the splitted royalties
     /// @param value percentage for split (using 2 decimals - 10000 = 100, 0 = 0)
     function splitTokenRoyalty(uint256 tokenId, address recipient, uint256 value) external {
+        require(recipient != address(0), 'Royalty: Invalid recipient address');
         require(value > 0, 'Royalty: Value should be greater than zero');
         require(value <= 10000, 'Royalty: Too high value');
         require(_royalties[tokenId][msg.sender] > 0, 'Royalty: Sender is not royalty account');

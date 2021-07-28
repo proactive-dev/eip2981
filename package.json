@@ -1,0 +1,13 @@
+{
+  "name": "eip2981",
+  "version": "0.0.1",
+  "description": "EIP-2981 implementation",
+  "main": "index.js",
+  "scripts": {
+  },
+  "author": "Proactive Dev",
+  "license": "ISC",
+  "devDependencies": {
+    "@openzeppelin/contracts": "^4.2.0"
+  }
+}

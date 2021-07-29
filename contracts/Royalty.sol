@@ -77,6 +77,7 @@ contract Royalty is AccessControl {
             'Royalty: Please approve to transfer ERC20'
         );
 
+        _royalties[tokenId][msg.sender] = 0;
         IERC20(saleToken).transferFrom(msg.sender, to, royaltyAmount);
     }
 }

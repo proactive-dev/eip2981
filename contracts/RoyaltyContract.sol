@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 // accumulation per account
@@ -16,10 +17,25 @@ struct Royalty {
     mapping(address => uint256) values;
 }
 
+struct Proposal {
+    uint256 tokenId;
+    Royalty royalty;
+    uint256 expireAt;
+    uint256 endAt;
+    mapping(address => bool) agreed;
+}
+
 /// @dev This is a contract used to add Royalty to NFT
 contract RoyaltyContract is AccessControl {
+    using Counters for Counters.Counter;
+
+    uint256 constant PROPOSAL_DEADLINE = 5 days;
+
+    Counters.Counter private _proposalIdTracker;
+
     mapping(address => Accumulation) private _accumulations; // accumulations for each sale
     mapping(uint256 => Royalty) private _royalties; // royalty per NFT
+    mapping(uint256 => Proposal) private _proposals; // proposals
 
     modifier onlyAdmin {
         require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Royalty: Admin only");
@@ -108,5 +124,56 @@ contract RoyaltyContract is AccessControl {
 
         _accumulations[msg.sender].balances[token] -= amount;
         IERC20(token).transferFrom(msg.sender, to, amount);
+    }
+
+    /// @dev Proposal royalties
+    /// @param tokenId the NFT id of the royalties
+    /// @param recipients array of recipient of the royalties
+    /// @param values array of percentage (using 2 decimals - 10000 = 100, 0 = 0)
+    function propose(uint256 tokenId, address[] memory recipients, uint256[] memory values) external {
+        require(
+            recipients.length == values.length,
+            'ERC721: Arrays length mismatch'
+        );
+        require(_royalties[tokenId].values[msg.sender] > 0, 'Royalty: Sender is not royalty account');
+
+        uint256 proposalId = _proposalIdTracker.current();
+        _proposals[proposalId + 1].tokenId = tokenId;
+        for (uint256 i; i < recipients.length; i++) {
+            if (values[i] > 0 && values[i] <= 10000) {
+                _proposals[proposalId + 1].royalty.values[recipients[i]] = values[i];
+                _proposals[proposalId + 1].royalty.beneficiaries.push(recipients[i]);
+            } else if (values[i] == 0) {
+                _proposals[proposalId + 1].agreed[recipients[i]] = true;
+            }
+        }
+        _proposals[proposalId + 1].expireAt = block.timestamp + PROPOSAL_DEADLINE;
+
+        _proposalIdTracker.increment();
+    }
+
+    /// @dev Vote to proposal
+    /// @param proposalId id of the proposal
+    /// @param agreed agreement to proposal
+    function vote(uint256 proposalId, bool agreed) external {
+        require(proposalId > 0, 'Royalty: Invalid proposal id');
+        require(_proposals[proposalId].expireAt > 0, 'Royalty: Invalid proposal');
+        require(_proposals[proposalId].expireAt > block.timestamp, 'Royalty: Expired proposal');
+        require(_proposals[proposalId].royalty.values[msg.sender] > 0, 'Royalty: Sender is not royalty account');
+        require(_proposals[proposalId].endAt == 0, 'Royalty: Proposal already ended');
+
+        _proposals[proposalId].agreed[msg.sender] = agreed;
+        if (agreed) {
+            for (uint256 i; i < _proposals[proposalId].royalty.beneficiaries.length; i++) {
+                if (_proposals[proposalId].agreed[_proposals[proposalId].royalty.beneficiaries[i]] == false) {
+                    return; // return if any disagreed participant
+                }
+            }
+            _royalties[_proposals[proposalId].tokenId].beneficiaries = _proposals[proposalId].royalty.beneficiaries;
+            for (uint256 i; i < _proposals[proposalId].royalty.beneficiaries.length; i++) {
+                _royalties[_proposals[proposalId].tokenId].values[_proposals[proposalId].royalty.beneficiaries[i]] = _proposals[proposalId].royalty.values[_proposals[proposalId].royalty.beneficiaries[i]];
+            }
+            _proposals[proposalId].endAt = block.timestamp;
+        }
     }
 }

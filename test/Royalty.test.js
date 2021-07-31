@@ -1,4 +1,4 @@
-const Royalty = artifacts.require('Royalty')
+const RoyaltyContract = artifacts.require('RoyaltyContract')
 const ERC721WithRoyalty = artifacts.require('ERC721WithRoyalty')
 const truffleAssert = require('truffle-assertions')
 
@@ -21,7 +21,7 @@ contract('ERC721WithRoyalty', function (
   let tokenId = 0
 
   before(async function () {
-    royalty = await Royalty.deployed()
+    royalty = await RoyaltyContract.deployed()
     erc721WithRoyalty = await ERC721WithRoyalty.deployed()
     await erc721WithRoyalty.mint(minter, [initialBeneficiary, initialBeneficiary2], [initialRoyalty, initialRoyalty], {from: minter})
   })
